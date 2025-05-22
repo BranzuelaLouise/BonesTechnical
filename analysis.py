@@ -42,7 +42,7 @@ def compute_filler_ratio(text):
               fillers.append(token.text)
     
     ratio = filler_count / total_words
-    return ratio, fillers
+    return ratio, fillers, total_words
 
 def analyse_transcript(lines):
     results = []
@@ -54,7 +54,7 @@ def analyse_transcript(lines):
         sentiment = compute_sentiment(text)
         sentiment_label = sentiment["label"]
         sentiment_score = sentiment["score"]
-        filler_ratio, fillers = compute_filler_ratio(text)
+        filler_ratio, fillers, total_words = compute_filler_ratio(text)
 
         results.append({
             "speaker": speaker,
@@ -62,7 +62,8 @@ def analyse_transcript(lines):
             "sentiment_label": sentiment_label,
             "sentiment_score": sentiment_score,
             "filler_ratio": filler_ratio,
-            "filler_words": fillers
+            "filler_words": fillers,
+            "total_words": total_words
         })
     
     return results
