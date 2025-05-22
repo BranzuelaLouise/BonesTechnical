@@ -1,4 +1,4 @@
-import pandas as pd
+import streamlit as st
 import spacy
 from transformers import pipeline
 
@@ -10,13 +10,9 @@ FILLER_WORDS = [
 
 model = "distilbert/distilbert-base-uncased-finetuned-sst-2-english" # Prevent clogging the standard output
 
-def main():
-    lines = load_transcript("transcript.txt")
-
-    for line in lines:
-        sentiment = compute_sentiment(line)
-        filler_ratio = compute_filler_ratio(line)
-        print(f"Sentiment: {sentiment['label']}, Filler Ratio: {filler_ratio}")
+@st.cache_resource
+def load_sentiment_model():
+    return pipeline("sentiment-analysis", model=model)
 
 def load_transcript(file_path):
     with open(file_path, "r") as file:
@@ -26,14 +22,15 @@ def load_transcript(file_path):
     return lines
 
 def compute_sentiment(text):
-        sentiment_pipeline = pipeline("sentiment-analysis", model=model)
-        if not text or text.isspace():
-            return {"label": "NEUTRAL", "score": 0.0}
-        result = sentiment_pipeline(text)[0]
-        return result
+    sentiment_pipeline = load_sentiment_model()
+    if not text or text.isspace():
+        return {"label": "NEUTRAL", "score": 0.0}
+    result = sentiment_pipeline(text)[0]
+    return result
 
 def compute_filler_ratio(text):
     total_words = len(text.split())
+    fillers = []
 
     filler_count = 0
     nlp = spacy.load("en_core_web_sm")
@@ -42,10 +39,30 @@ def compute_filler_ratio(text):
     for token in doc:
          if token.text in FILLER_WORDS:
               filler_count += 1
-              print(token.text)
+              fillers.append(token.text)
     
     ratio = filler_count / total_words
-    return ratio
+    return ratio, fillers
 
-if __name__ == "__main__":
-    main()
+def analyse_transcript(lines):
+    results = []
+
+    for line in lines:
+        speaker = line.split(":")[0]
+        text = line.split(":")[1].strip()
+
+        sentiment = compute_sentiment(text)
+        sentiment_label = sentiment["label"]
+        sentiment_score = sentiment["score"]
+        filler_ratio, fillers = compute_filler_ratio(text)
+
+        results.append({
+            "speaker": speaker,
+            "text": text,
+            "sentiment_label": sentiment_label,
+            "sentiment_score": sentiment_score,
+            "filler_ratio": filler_ratio,
+            "filler_words": fillers
+        })
+    
+    return results
